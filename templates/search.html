@@ -1,8 +1,20 @@
 <html>
 <body>
 <h1 align="center">RESULTS</h1>
-<form align = "right" method="post">search:<input type="text" name="searchparam">
+<form align = "right" method="get">search:<input type="text" name="searchparam">
 <input type="submit" value="search"></form>
 <hr>
+{% for post in posts %}
+
+
+<p><b>Author: </b>{{post.author}}</p>
+<p>{{post.text}}<p>
+<p><b>Tags: </b>{{post.tags}}<p>
+<p><b>Posted: </b>{{post.date}}<p>
+<hr align=left width=5%>
+
+{% endfor %}
+
+
 </body>
 </html>
