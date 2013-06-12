@@ -26,7 +26,7 @@ class CreateResource(Resource):
                     'date': datetime.datetime.utcnow(), }
         posts = self.db.posts
         posts.insert(blogpost)
-        return redirectTo('read', request)
+        return redirectTo('posts', request)
 
 
 class SinglePostResource(Resource):
