@@ -1,3 +1,4 @@
 Twisted
 pymongo
 Jinja2
+jsonfig==0.1.1
