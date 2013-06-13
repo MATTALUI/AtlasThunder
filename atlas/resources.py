@@ -5,7 +5,10 @@ import datetime
 from twisted.web.util import redirectTo
 from jinja2 import Environment, FileSystemLoader
 from bson.objectid import ObjectId
-env = Environment(loader=FileSystemLoader('templates'))
+
+from atlas.config import config
+
+env = Environment(loader=FileSystemLoader(config['template_directory']))
 
 
 class CreateResource(Resource):
