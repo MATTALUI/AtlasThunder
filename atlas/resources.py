@@ -64,3 +64,18 @@ class ReadResource(Resource):
 
     def render_POST(self, request):
         return env.get_template('nope.html').render().encode('utf-8')
+
+
+RESOURCE_MAPPING = {
+    'create': CreateResource(),
+    'posts': ReadResource()
+}
+
+
+def build_resource():
+    root = Resource()
+
+    for key, val in RESOURCE_MAPPING.iteritems():
+        root.putChild(key, val)
+
+    return root
