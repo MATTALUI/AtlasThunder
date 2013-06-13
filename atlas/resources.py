@@ -3,12 +3,10 @@ import cgi
 from pymongo import MongoClient, DESCENDING
 import datetime
 from twisted.web.util import redirectTo
-from jinja2 import Environment, FileSystemLoader
 from bson.objectid import ObjectId
 
 from atlas.config import config
-
-env = Environment(loader=FileSystemLoader(config['template_directory']))
+from atlas.template import render_response
 
 
 class CreateResource(Resource):
@@ -20,8 +18,7 @@ class CreateResource(Resource):
         self.db = self.client.atlas
 
     def render_GET(self, request):
-
-        return env.get_template('create.html').render().encode('utf-8')
+        return render_response('create.html')
 
     def render_POST(self, request):
         blogpost = {'author': cgi.escape(request.args['author'][0]),
@@ -42,9 +39,8 @@ class SinglePostResource(Resource):
 
     def render_GET(self, request):
         blogposts = self.db.posts.find({'_id': ObjectId(self.post_id)})
-        template = env.get_template('singlepost.html')
         context = {'posts': blogposts}
-        return template.render(context).encode('utf-8')
+        return render_response('singlepost.html', context)
 
     def render_POST(self, request):
         pass
@@ -58,16 +54,14 @@ class ReadResource(Resource):
 
     def render_GET(self, request):
         blogposts = self.db.posts.find().sort('date', DESCENDING)
-
-        template = env.get_template('read.html')
         context = {'posts': blogposts}
-        return template.render(context).encode('utf-8')
+        return render_response('read.html', context)
 
     def getChild(self, path, request):
         return SinglePostResource(path)
 
     def render_POST(self, request):
-        return env.get_template('nope.html').render().encode('utf-8')
+        return render_response('nope.html')
 
 
 RESOURCE_MAPPING = {
