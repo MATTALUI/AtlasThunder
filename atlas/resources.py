@@ -15,7 +15,8 @@ class CreateResource(Resource):
 
     def __init__(self):
         Resource.__init__(self)
-        self.client = MongoClient('localhost', 27017)
+        self.client = MongoClient(
+            config['mongodb']['host'], config['mongodb']['port'])
         self.db = self.client.atlas
 
     def render_GET(self, request):
