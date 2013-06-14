@@ -1,11 +1,14 @@
 <html>
+<head>
+<link rel="stylesheet" type="text/css" href="/static/bootstrap-responsive.min.css" media="screen" />
+<head>
 <body>
 <h1 align="center">POSTS</h1>
 <form align="right" method="post">search:<input type="text" name="searchparam">
 <input type="submit" value="search"></form>
+
 <hr>
 {% for post in posts %}
-
 
 <p><b>Author: </b>{{post.author}}</p>
 <p>{{post.text}}<p>
@@ -13,8 +16,7 @@
 <p><b>Posted: </b>{{post.date}}<p>
 <p><b>ID: </b>{{post._id}}<p>
 <a href="/posts/{{post._id}}">View this post</a>
-<hr align=left width=5%>
-
+<hr align=left width=05%>
 {% endfor %}
 
 </body>

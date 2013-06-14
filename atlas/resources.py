@@ -4,7 +4,7 @@ from pymongo import MongoClient, DESCENDING
 import datetime
 from twisted.web.util import redirectTo
 from bson.objectid import ObjectId
-
+from twisted.web.static import File
 from atlas.config import config
 from atlas.template import render_response
 
@@ -66,7 +66,8 @@ class ReadResource(Resource):
 
 RESOURCE_MAPPING = {
     'create': CreateResource(),
-    'posts': ReadResource()
+    'posts': ReadResource(),
+    'static': File('static')
 }
 
 
