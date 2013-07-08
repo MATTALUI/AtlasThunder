@@ -8,15 +8,36 @@ from twisted.web.static import File
 from atlas.config import config
 from atlas.template import render_response
 
-
-class CreateResource(Resource):
-
-    def __init__(self):
+class PostResource(Resource):
+    def __init__(self, post_id):
         Resource.__init__(self)
-        self.client = MongoClient(
-            config['mongodb']['host'], config['mongodb']['port'])
+        self.client = MongoClient('localhost', 27017)
         self.db = self.client.atlas
 
+        self.post_id = post_id
+    def render_GET(self, request):
+        blogposts = self.db.posts.find({'_id': ObjectId(self.post_id)})
+        context = {'posts': blogposts}
+        return render_response('singlepost.html', context)
+
+
+class PostsResource(Resource):
+    def __init__(self):
+        Resource.__init__(self)
+        self.client = MongoClient('localhost', 27017)
+        self.db = self.client.atlas
+    def render_GET(self, request):
+        blogposts = self.db.posts.find().sort('date', DESCENDING)
+        context = {'posts': blogposts}
+        return render_response('posts.html', context)
+    def getChild(self, path, request):
+        return PostResource(path)
+
+class AdminCreateResource(Resource):
+    def __init__(self):
+        Resource.__init__(self)
+        self.client = MongoClient('localhost', 27017)
+        self.db = self.client.atlas
     def render_GET(self, request):
         return render_response('create.html')
 
@@ -27,26 +48,40 @@ class CreateResource(Resource):
                     'date': datetime.datetime.utcnow(), }
         posts = self.db.posts
         posts.insert(blogpost)
-        return redirectTo('posts', request)
+        return redirectTo('admin', request)
 
-
-class SinglePostResource(Resource):
-    def __init__(self, post_id):
+class AdminUpdateResource(Resource):
+    def __init__(self, post_id=None):
         Resource.__init__(self)
         self.client = MongoClient('localhost', 27017)
         self.db = self.client.atlas
         self.post_id = post_id
 
     def render_GET(self, request):
-        blogposts = self.db.posts.find({'_id': ObjectId(self.post_id)})
-        context = {'posts': blogposts}
-        return render_response('singlepost.html', context)
+        post = self.db.posts.find({'_id': ObjectId(self.post_id)}).next()
+        context = {'post': post}
+        return render_response('create.html', context)
+    def render_POST(self, request):
+        data = {'author': cgi.escape(request.args['author'][0]),
+                    'text': cgi.escape(request.args['text'][0]),
+                    'tags': cgi.escape(request.args['tags'][0]),}
+        self.db.posts.update({'_id': ObjectId(cgi.escape(request.args['id'][0]))}, {'$set': data})
+        return redirectTo('/admin', request)
+    def getChild(self, path, request):
+        return AdminUpdateResource(post_id=path)
+
+class AdminDeleteResource(Resource):
+    def __init__(self, post_id):
+        Resource.__init__(self)
+        self.client = MongoClient('localhost', 27017)
+        self.db = self.client.atlas
+        self.post_id = post_id
 
     def render_POST(self, request):
         pass
 
 
-class ReadResource(Resource):
+class AdminReadResource(Resource):
     def __init__(self):
         Resource.__init__(self)
         self.client = MongoClient('localhost', 27017)
@@ -58,16 +93,18 @@ class ReadResource(Resource):
         return render_response('read.html', context)
 
     def getChild(self, path, request):
-        return SinglePostResource(path)
+        if path == 'edit':
+            return AdminUpdateResource()
+        raise
 
     def render_POST(self, request):
         return render_response('nope.html')
 
 
 RESOURCE_MAPPING = {
-    'create': CreateResource(),
-    'posts': ReadResource(),
-    'static': File('static')
+    'admin': AdminReadResource(),
+    'static': File('static'),
+    'posts' : PostsResource(),
 }
 
 
