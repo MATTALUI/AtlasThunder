@@ -2,3 +2,4 @@ Twisted
 pymongo
 Jinja2
 jsonfig==0.1.1
+txmongo==0.4
