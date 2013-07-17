@@ -106,15 +106,35 @@ class AdminUpdateResource(Resource):
 
 
 class AdminDeleteResource(Resource):
-    def __init__(self, post_id):
+    def __init__(self, post_id=None):
         Resource.__init__(self)
         self.post_id = post_id
-#    if not request.getCookie('username') == 'matt':
-#        request.redirect('/login')
-#        return ''
+
+    def render_GET(self, request):
+        if not request.getCookie('username') == 'matt':
+            request.redirect('/login')
+            return ''
+
+        def handle_post(post):
+            context = {'post': post}
+            request.write(render_response('delete.html', context))
+            request.finish()
+        _id = ObjectId(self.post_id)
+        deferred = _db.posts.find_one(_id)
+        deferred.addCallback(handle_post)
+        return NOT_DONE_YET
 
     def render_POST(self, request):
-        pass
+        def finish(_):
+            request.redirect('/admin')
+            request.finish()
+        _id = ObjectId(self.post_id)
+        d = _db.posts.remove({'_id': _id})
+        d.addCallback(finish)
+        return NOT_DONE_YET
+
+    def getChild(self, path, request):
+        return AdminDeleteResource(post_id=path)
 
 
 class AdminReadResource(Resource):
@@ -137,6 +157,8 @@ class AdminReadResource(Resource):
             return AdminUpdateResource()
         elif path == 'new':
             return AdminCreateResource()
+        elif path == 'delete':
+            return AdminDeleteResource()
         raise Exception('unknown path: {0}'.format(path))
 
     def render_POST(self, request):
