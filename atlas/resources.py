@@ -1,5 +1,5 @@
 from twisted.web.resource import Resource
-from twisted.web.server import NOT_DONE_YET
+from twisted.web.server import NOT_DONE_YET, Site, Session
 import txmongo
 from txmongo import filter as _filter
 import cgi
@@ -9,7 +9,7 @@ from twisted.web.static import File
 from atlas.template import render_response
 _client = txmongo.lazyMongoConnectionPool()
 _db = _client.atlas
-
+sessions = set()
 
 class PostResource(Resource):
     def __init__(self, post_id):
@@ -51,7 +51,8 @@ class AdminCreateResource(Resource):
         Resource.__init__(self)
 
     def render_GET(self, request):
-        if not request.getCookie('username') == 'matt':
+        session = request.getSession()
+        if session.uid not in sessions:
             request.redirect('/login')
             return ''
         return render_response('create.html')
@@ -76,7 +77,8 @@ class AdminUpdateResource(Resource):
         self.post_id = post_id
 
     def render_GET(self, request):
-        if not request.getCookie('username') == 'matt':
+        session = request.getSession()
+        if session.uid not in sessions:
             request.redirect('/login')
             return ''
 
@@ -111,7 +113,8 @@ class AdminDeleteResource(Resource):
         self.post_id = post_id
 
     def render_GET(self, request):
-        if not request.getCookie('username') == 'matt':
+        session= request.getSession()
+        if session.uid not in sessions:
             request.redirect('/login')
             return ''
 
@@ -139,7 +142,8 @@ class AdminDeleteResource(Resource):
 
 class AdminReadResource(Resource):
     def render_GET(self, request):
-        if not request.getCookie('username') == 'matt':
+        session = request.getSession()
+        if session.uid not in sessions:
             request.redirect('/login')
             return ''
 
@@ -178,7 +182,9 @@ class LoginResource(Resource):
         username = cgi.escape(request.args['username'][0])
         password = cgi.escape(request.args['password'][0])
         if username == 'matt' and password == 'cats':
-            request.addCookie('username', 'matt')
+            session = request.getSession()
+            if session.uid not in sessions:
+                sessions.add(session.uid)
             request.redirect('/admin')
             return ''
         else:
@@ -188,7 +194,8 @@ class LoginResource(Resource):
 
 class LogoutResource(Resource):
     def render_GET(self, request):
-        request.addCookie('username', None)
+        session = request.getSession()
+        sessions.remove(session.uid)
         request.redirect('/posts')
         return ''
 RESOURCE_MAPPING = {
