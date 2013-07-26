@@ -1,4 +1,5 @@
 from twisted.web.resource import Resource
+import bcrypt
 from twisted.web.server import NOT_DONE_YET, Site, Session
 import txmongo
 from txmongo import filter as _filter
@@ -163,7 +164,6 @@ class AdminReadResource(Resource):
             return AdminCreateResource()
         elif path == 'delete':
             return AdminDeleteResource()
-        raise Exception('unknown path: {0}'.format(path))
 
     def render_POST(self, request):
         return render_response('nope.html')
@@ -181,29 +181,85 @@ class LoginResource(Resource):
     def render_POST(self, request):
         username = cgi.escape(request.args['username'][0])
         password = cgi.escape(request.args['password'][0])
-        if username == 'matt' and password == 'cats':
-            session = request.getSession()
-            if session.uid not in sessions:
-                sessions.add(session.uid)
-            request.redirect('/admin')
-            return ''
-        else:
-            request.redirect('/login')
-            return ''
-
-
+        d = _db.users.find_one({'username': username})
+        def user_found(user):
+            if not user:
+                context = {'key': 
+                           "You're " 
+                           'not a user! Would you like to '
+                           '<a href="/register">register</a>?'}
+                request.write(render_response('sorry.html', context))
+                request.finish()
+                return 'not user'
+            if bcrypt.hashpw(password, user['password']) == user['password']:
+                session = request.getSession()
+                if session.uid not in sessions:
+                    sessions.add(session.uid)
+                request.redirect('/admin')
+                request.finish()
+                return 'password correct'
+            else:
+                context = {'key': 'Incorrect password!'}
+                request.write(render_response('sorry.html', context))
+                request.finish()
+                return 'password incorrect'
+        d.addCallback(user_found)
+        return NOT_DONE_YET
 class LogoutResource(Resource):
     def render_GET(self, request):
         session = request.getSession()
         sessions.remove(session.uid)
         request.redirect('/posts')
         return ''
+
+class SignUpResource(Resource):
+    def render_GET(self, request):
+        session = request.getSession()
+        if session.uid in sessions:
+            context = {'key': "You're already registered!"}
+            request.write(render_response('sorry.html', context))
+            request.finish()
+            return NOT_DONE_YET
+        return render_response('signup.html')
+    def render_POST(self, request):
+        dusername = cgi.escape(request.args['username'][0])
+        dpassword = cgi.escape(request.args['password'][0])
+        dpassword2 = cgi.escape(request.args['passwordconfirm'][0])
+         
+        if dpassword != dpassword2:
+            context = {'key': 'Your passwords did not match!'}
+            request.write(render_response('sorry.html', context))
+            request.finish()
+            return NOT_DONE_YET
+
+            
+        d = _db.users.find_one({'username':dusername})
+        
+        def verify_user(user):
+            if user:
+                context = {'key','That username already exists!'}
+                request.write(render_response('sorry.html', context))
+                request.finish()
+            else:
+                salt = bcrypt.gensalt()
+                dhashword = bcrypt.hashpw(dpassword, salt)
+                userinfo ={'username': dusername,
+                           'password': dhashword}
+                return _db.users.insert(userinfo)
+        d.addCallback(verify_user)
+
+        def user_created(_):
+            request.redirect('/login')
+            request.finish()
+        d.addCallback(user_created)
+        return NOT_DONE_YET
 RESOURCE_MAPPING = {
     'admin': AdminReadResource(),
     'static': File('static'),
     'posts': PostsResource(),
     'login': LoginResource(),
     'logout': LogoutResource(),
+    'register': SignUpResource(),
 }
 
 
