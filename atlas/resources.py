@@ -1,6 +1,6 @@
 from twisted.web.resource import Resource
 import bcrypt
-from twisted.web.server import NOT_DONE_YET, Site, Session
+from twisted.web.server import NOT_DONE_YET
 import txmongo
 from txmongo import filter as _filter
 import cgi
@@ -11,6 +11,7 @@ from atlas.template import render_response
 _client = txmongo.lazyMongoConnectionPool()
 _db = _client.atlas
 sessions = set()
+
 
 class PostResource(Resource):
     def __init__(self, post_id):
@@ -114,7 +115,7 @@ class AdminDeleteResource(Resource):
         self.post_id = post_id
 
     def render_GET(self, request):
-        session= request.getSession()
+        session = request.getSession()
         if session.uid not in sessions:
             request.redirect('/login')
             return ''
@@ -182,10 +183,11 @@ class LoginResource(Resource):
         username = cgi.escape(request.args['username'][0])
         password = cgi.escape(request.args['password'][0])
         d = _db.users.find_one({'username': username})
+
         def user_found(user):
             if not user:
-                context = {'key': 
-                           "You're " 
+                context = {'key':
+                           "You're "
                            'not a user! Would you like to '
                            '<a href="/register">register</a>?'}
                 request.write(render_response('sorry.html', context))
@@ -205,12 +207,15 @@ class LoginResource(Resource):
                 return 'password incorrect'
         d.addCallback(user_found)
         return NOT_DONE_YET
+
+
 class LogoutResource(Resource):
     def render_GET(self, request):
         session = request.getSession()
         sessions.remove(session.uid)
         request.redirect('/posts')
         return ''
+
 
 class SignUpResource(Resource):
     def render_GET(self, request):
@@ -221,30 +226,29 @@ class SignUpResource(Resource):
             request.finish()
             return NOT_DONE_YET
         return render_response('signup.html')
+
     def render_POST(self, request):
         dusername = cgi.escape(request.args['username'][0])
         dpassword = cgi.escape(request.args['password'][0])
         dpassword2 = cgi.escape(request.args['passwordconfirm'][0])
-         
+
         if dpassword != dpassword2:
             context = {'key': 'Your passwords did not match!'}
             request.write(render_response('sorry.html', context))
             request.finish()
             return NOT_DONE_YET
+        d = _db.users.find_one({'username': dusername})
 
-            
-        d = _db.users.find_one({'username':dusername})
-        
         def verify_user(user):
             if user:
-                context = {'key','That username already exists!'}
+                context = {'key': 'That username already exists!'}
                 request.write(render_response('sorry.html', context))
                 request.finish()
             else:
                 salt = bcrypt.gensalt()
                 dhashword = bcrypt.hashpw(dpassword, salt)
-                userinfo ={'username': dusername,
-                           'password': dhashword}
+                userinfo = {'username': dusername,
+                            'password': dhashword}
                 return _db.users.insert(userinfo)
         d.addCallback(verify_user)
 
